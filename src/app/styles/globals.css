@@ -1,0 +1,42 @@
+@import 'tailwindcss';
+@plugin '../../shared/config/hero';
+@source '../../../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}';
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+    --font-sans: 'var(--font-sans)';
+    --font-mono: 'var(--font-mono)';
+    --font-serif: 'var(--font-serif)';
+    --spacing-full-0.5: calc(100% + 0.5rem);
+    --bg-glow-gradient: linear-gradient(
+        to left,
+        #ff5770,
+        #e4428d,
+        #c42da8,
+        #9e16c3,
+        #6501de,
+        #9e16c3,
+        #c42da8,
+        #e4428d,
+        #ff5770
+    );
+    --animate-glow: glow 1.25s linear infinite, fade-in 0.3s ease-out forwards;
+
+    @keyframes glow {
+        0% {
+            background-position: 0% 50%;
+        }
+        100% {
+            background-position: 200% 50%;
+        }
+    }
+
+    @keyframes fade-in {
+        0% {
+            transform: scale(0.85);
+        }
+        100% {
+            transform: scale(1);
+        }
+    }
+}
