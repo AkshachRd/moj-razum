@@ -19,10 +19,10 @@ export const CardComponent: FC<CardComponentProps> = ({
     className,
 }) => {
     return (
-        <Card className={clsx('w-[400px] font-serif', fontSerif.variable, className)} shadow="lg">
-            <CardHeader className="h-24 justify-center text-xl">{headerContent}</CardHeader>
+        <Card className={clsx('w-[380px] font-serif', fontSerif.variable, className)} shadow="lg">
+            <CardHeader className="h-28 justify-center text-xl">{headerContent}</CardHeader>
             <Divider />
-            <CardFooter className="h-24 justify-center text-xl">
+            <CardFooter className="h-28 justify-center text-xl">
                 <Spoiler fps={16} hidden={!revealBack}>
                     {footerContent}
                 </Spoiler>

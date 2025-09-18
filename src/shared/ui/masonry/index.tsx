@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 
@@ -23,13 +25,20 @@ const useMeasure = <T extends HTMLElement>() => {
 
     useLayoutEffect(() => {
         if (!ref.current) return;
+        const element = ref.current;
+
+        // Set initial size immediately so first layout can compute
+        const rect = element.getBoundingClientRect();
+
+        setSize({ width: rect.width, height: rect.height });
+
         const ro = new ResizeObserver(([entry]) => {
             const { width, height } = entry.contentRect;
 
             setSize({ width, height });
         });
 
-        ro.observe(ref.current);
+        ro.observe(element);
 
         return () => ro.disconnect();
     }, []);
@@ -37,48 +46,39 @@ const useMeasure = <T extends HTMLElement>() => {
     return [ref, size] as const;
 };
 
-const preloadImages = async (urls: string[]): Promise<void> => {
-    await Promise.all(
-        urls.map(
-            (src) =>
-                new Promise<void>((resolve) => {
-                    const img = new Image();
-
-                    img.src = src;
-                    img.onload = img.onerror = () => resolve();
-                }),
-        ),
-    );
-};
-
-interface Item {
+type GridItem = {
     id: string;
-    img: string;
-    url: string;
-    height: number;
-}
-
-interface GridItem extends Item {
     x: number;
     y: number;
     w: number;
     h: number;
-}
+};
 
-interface MasonryProps {
-    items: Item[];
+type AnimateFrom = 'bottom' | 'top' | 'left' | 'right' | 'center' | 'random';
+
+type MasonryProps<TItem> = {
+    items: TItem[];
+    getItemKey: (item: TItem) => string;
+    getItemHeight: (item: TItem) => number;
+    renderItem: (item: TItem) => React.ReactNode;
+    columnWidth?: number;
+    gap?: number;
     ease?: string;
     duration?: number;
     stagger?: number;
-    animateFrom?: 'bottom' | 'top' | 'left' | 'right' | 'center' | 'random';
+    animateFrom?: AnimateFrom;
     scaleOnHover?: boolean;
     hoverScale?: number;
     blurToFocus?: boolean;
-    colorShiftOnHover?: boolean;
-}
+};
 
-export const Masonry: React.FC<MasonryProps> = ({
+export function Masonry<TItem>({
     items,
+    getItemKey,
+    getItemHeight,
+    renderItem,
+    columnWidth,
+    gap = 16,
     ease = 'power3.out',
     duration = 0.6,
     stagger = 0.05,
@@ -86,16 +86,26 @@ export const Masonry: React.FC<MasonryProps> = ({
     scaleOnHover = true,
     hoverScale = 0.95,
     blurToFocus = true,
-    colorShiftOnHover = false,
-}) => {
-    const columns = useMedia(
+}: MasonryProps<TItem>) {
+    const columnsByBreakpoint = useMedia(
         ['(min-width:1500px)', '(min-width:1000px)', '(min-width:600px)', '(min-width:400px)'],
         [5, 4, 3, 2],
         1,
     );
 
     const [containerRef, { width }] = useMeasure<HTMLDivElement>();
-    const [imagesReady, setImagesReady] = useState(false);
+    const [forcedWidth, setForcedWidth] = useState<number | null>(null);
+
+    useLayoutEffect(() => {
+        // Force an initial width based on parent or viewport to avoid 0×0 on first paint
+        const parentWidth = containerRef.current?.parentElement?.getBoundingClientRect().width;
+
+        if (parentWidth && parentWidth > 0) {
+            setForcedWidth(parentWidth);
+        } else if (typeof window !== 'undefined') {
+            setForcedWidth(Math.max(window.innerWidth - 32, 320));
+        }
+    }, []);
 
     const getInitialPosition = (item: GridItem) => {
         const containerRect = containerRef.current?.getBoundingClientRect();
@@ -107,7 +117,7 @@ export const Masonry: React.FC<MasonryProps> = ({
         if (animateFrom === 'random') {
             const dirs = ['top', 'bottom', 'left', 'right'];
 
-            direction = dirs[Math.floor(Math.random() * dirs.length)] as typeof animateFrom;
+            direction = dirs[Math.floor(Math.random() * dirs.length)] as AnimateFrom;
         }
 
         switch (direction) {
@@ -129,35 +139,54 @@ export const Masonry: React.FC<MasonryProps> = ({
         }
     };
 
-    useEffect(() => {
-        preloadImages(items.map((i) => i.img)).then(() => setImagesReady(true));
-    }, [items]);
+    const measuredWidth = useMemo(() => {
+        if (width && width > 0) return width;
+        if (forcedWidth && forcedWidth > 0) return forcedWidth;
+        const parentWidth = containerRef.current?.parentElement?.getBoundingClientRect().width;
 
-    const grid = useMemo<GridItem[]>(() => {
-        if (!width) return [];
-        const colHeights = new Array(columns).fill(0);
-        const gap = 16;
-        const totalGaps = (columns - 1) * gap;
-        const columnWidth = (width - totalGaps) / columns;
+        if (parentWidth && parentWidth > 0) return parentWidth;
+        if (typeof window !== 'undefined') return Math.max(window.innerWidth - 32, 320);
 
-        return items.map((child) => {
+        return 0;
+    }, [width, forcedWidth]);
+
+    const layout = useMemo(() => {
+        if (!measuredWidth) return { grid: [] as GridItem[], containerHeight: 0 };
+        let columns = columnsByBreakpoint;
+        let columnW = columnWidth ?? 0;
+
+        if (columnWidth && columnWidth > 0) {
+            columns = Math.max(1, Math.floor((measuredWidth + gap) / (columnWidth + gap)));
+            columnW = columnWidth;
+        } else {
+            const totalGaps = (columns - 1) * gap;
+
+            columnW = (measuredWidth - totalGaps) / columns;
+        }
+
+        const colHeights = new Array(columns).fill(0) as number[];
+
+        const grid = items.map((child) => {
+            const id = getItemKey(child);
             const col = colHeights.indexOf(Math.min(...colHeights));
-            const x = col * (columnWidth + gap);
-            const height = child.height / 2;
+            const x = col * (columnW + gap);
+            const height = getItemHeight(child);
             const y = colHeights[col];
 
             colHeights[col] += height + gap;
 
-            return { ...child, x, y, w: columnWidth, h: height };
+            return { id, x, y, w: columnW, h: height } as GridItem;
         });
-    }, [columns, items, width]);
+
+        const containerHeight = Math.max(0, ...colHeights) - gap;
+
+        return { grid, containerHeight };
+    }, [columnsByBreakpoint, items, measuredWidth, getItemKey, getItemHeight, columnWidth, gap]);
 
     const hasMounted = useRef(false);
 
     useLayoutEffect(() => {
-        if (!imagesReady) return;
-
-        grid.forEach((item, index) => {
+        layout.grid.forEach((item, index) => {
             const selector = `[data-key="${item.id}"]`;
             const animProps = { x: item.x, y: item.y, width: item.w, height: item.h };
 
@@ -194,60 +223,68 @@ export const Masonry: React.FC<MasonryProps> = ({
         });
 
         hasMounted.current = true;
-    }, [grid, imagesReady, stagger, animateFrom, blurToFocus, duration, ease]);
+    }, [layout, stagger, animateFrom, blurToFocus, duration, ease]);
 
-    const handleMouseEnter = (id: string, element: HTMLElement) => {
-        if (scaleOnHover) {
-            gsap.to(`[data-key="${id}"]`, {
-                scale: hoverScale,
-                duration: 0.3,
-                ease: 'power2.out',
-            });
-        }
-        if (colorShiftOnHover) {
-            const overlay = element.querySelector('.color-overlay') as HTMLElement;
-
-            if (overlay) gsap.to(overlay, { opacity: 0.3, duration: 0.3 });
-        }
+    const handleMouseEnter = (id: string) => {
+        if (!scaleOnHover) return;
+        gsap.to(`[data-key="${id}"]`, {
+            scale: hoverScale,
+            duration: 0.3,
+            ease: 'power2.out',
+        });
     };
 
-    const handleMouseLeave = (id: string, element: HTMLElement) => {
-        if (scaleOnHover) {
-            gsap.to(`[data-key="${id}"]`, {
-                scale: 1,
-                duration: 0.3,
-                ease: 'power2.out',
-            });
-        }
-        if (colorShiftOnHover) {
-            const overlay = element.querySelector('.color-overlay') as HTMLElement;
-
-            if (overlay) gsap.to(overlay, { opacity: 0, duration: 0.3 });
-        }
+    const handleMouseLeave = (id: string) => {
+        if (!scaleOnHover) return;
+        gsap.to(`[data-key="${id}"]`, {
+            scale: 1,
+            duration: 0.3,
+            ease: 'power2.out',
+        });
     };
+
+    if (items.length > 0 && layout.grid.length === 0) {
+        return (
+            <div className="flex w-full flex-col items-center gap-4">
+                {items.map((item) => (
+                    <div key={getItemKey(item)} className="w-full">
+                        {renderItem(item)}
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    const fallbackHeight = useMemo(() => {
+        if (!items || items.length === 0) return 0;
+        const gap = 16;
+
+        return items.reduce((sum, item, idx) => sum + getItemHeight(item) + (idx > 0 ? gap : 0), 0);
+    }, [items, getItemHeight]);
 
     return (
-        <div ref={containerRef} className="relative h-full w-full">
-            {grid.map((item) => (
-                <div
-                    key={item.id}
-                    className="absolute box-content"
-                    data-key={item.id}
-                    style={{ willChange: 'transform, width, height, opacity' }}
-                    onClick={() => window.open(item.url, '_blank', 'noopener')}
-                    onMouseEnter={(e) => handleMouseEnter(item.id, e.currentTarget)}
-                    onMouseLeave={(e) => handleMouseLeave(item.id, e.currentTarget)}
-                >
+        <div
+            ref={containerRef}
+            className="relative w-full"
+            style={{ height: layout.containerHeight || fallbackHeight }}
+        >
+            {layout.grid.map((item, index) => {
+                const data = items[index];
+                const id = item.id;
+
+                return (
                     <div
-                        className="relative h-full w-full rounded-[10px] bg-cover bg-center text-[10px] leading-[10px] uppercase shadow-[0px_10px_50px_-10px_rgba(0,0,0,0.2)]"
-                        style={{ backgroundImage: `url(${item.img})` }}
+                        key={id}
+                        className="absolute box-content"
+                        data-key={id}
+                        style={{ willChange: 'transform, width, height, opacity' }}
+                        onMouseEnter={() => handleMouseEnter(id)}
+                        onMouseLeave={() => handleMouseLeave(id)}
                     >
-                        {colorShiftOnHover && (
-                            <div className="color-overlay pointer-events-none absolute inset-0 rounded-[10px] bg-gradient-to-tr from-pink-500/50 to-sky-500/50 opacity-0" />
-                        )}
+                        <div className="relative h-full w-full">{renderItem(data)}</div>
                     </div>
-                </div>
-            ))}
+                );
+            })}
         </div>
     );
-};
+}

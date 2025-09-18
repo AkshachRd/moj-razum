@@ -38,12 +38,13 @@ export function CardItemDropdown({ card, onModalOpen }: CardItemDropdownProps) {
 
     return (
         <Dropdown
-            className="w-fit min-w-0"
+            className="w-full min-w-0"
             isOpen={isDropdownOpen || isMenuHovered}
             placement="right"
         >
             <DropdownTrigger>
                 <button
+                    className="w-full"
                     {...cardHoverProps}
                     onClick={() => {
                         onDropdownClose();
