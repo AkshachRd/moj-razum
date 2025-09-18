@@ -21,6 +21,7 @@
         "ai": "^4.2.10",
         "clsx": "2.1.1",
         "framer-motion": "11.13.1",
+        "gsap": "^3.13.0",
         "intl-messageformat": "^10.5.0",
         "nanoid": "^5.1.5",
         "next": "15.0.4",
