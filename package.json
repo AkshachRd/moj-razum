@@ -4,7 +4,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev": "next dev --turbopack",
+        "dev": "next dev --turbopack --port 4250",
         "build": "next build",
         "start": "next start",
         "lint": "eslint . --ext .ts,.tsx --fix"
@@ -63,5 +63,5 @@
     "browser": {
         "child_process": false
     },
-    "packageManager": "pnpm@10.8.1"
+    "packageManager": "npm@10.9.0"
 }

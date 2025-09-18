@@ -2,7 +2,7 @@
 
 import type { Item } from '../model/use-search';
 
-import { Autocomplete, AutocompleteItem } from '@heroui/autocomplete';
+import { Autocomplete, AutocompleteItem } from '@heroui/react';
 import { AnimatePresence } from 'framer-motion';
 import { useCallback, useState } from 'react';
 import { nanoid } from 'nanoid';

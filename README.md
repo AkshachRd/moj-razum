@@ -68,24 +68,12 @@ app → pages → widgets → features → entities → shared
 ### Prerequisites
 
 -   Node.js 18.18+ (recommended for Next.js 15)
--   pnpm 10+ (project uses `packageManager: pnpm@10.x`)
+-   npm 10+
 
 ### Installation
 
 ```bash
-pnpm install
-```
-
-If using pnpm with HeroUI, add to `.npmrc` to ensure correct hoisting:
-
-```bash
-public-hoist-pattern[]=*@heroui/*
-```
-
-Then re-install:
-
-```bash
-pnpm install
+npm install
 ```
 
 ### Environment Variables
@@ -103,20 +91,20 @@ The key is required by the AI integrations (`src/shared/ai/llm-models.ts`, `src/
 Development server (Turbopack):
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 Production build and start:
 
 ```bash
-pnpm build
-pnpm start
+npm run build
+npm run start
 ```
 
 Lint and auto-fix:
 
 ```bash
-pnpm lint
+npm run lint
 ```
 
 App will be available at `http://localhost:3000`.
@@ -177,7 +165,7 @@ Contributions are welcome! To propose changes:
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feat/your-feature`
 3. Install dependencies and set up `.env.local`
-4. Run `pnpm lint` and ensure no FSD rule violations
+4. Run `npm run lint` and ensure no FSD rule violations
 5. Commit with clear messages and open a Pull Request
 
 For bug reports, please include steps to reproduce and relevant logs.

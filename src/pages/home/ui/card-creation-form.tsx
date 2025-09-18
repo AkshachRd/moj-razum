@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
-import { Input } from '@heroui/input';
-import { Button } from '@heroui/button';
+import { Input, Button } from '@heroui/react';
 import { useRef, useState } from 'react';
 
 import { ForwardLogo, CloseLogo } from '@/shared/ui/icons';

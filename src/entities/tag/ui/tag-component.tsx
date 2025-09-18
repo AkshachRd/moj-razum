@@ -1,5 +1,5 @@
 'use client';
-import { Chip } from '@heroui/chip';
+import { Chip } from '@heroui/react';
 
 import { TagColor } from '../model/types';
 
