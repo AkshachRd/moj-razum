@@ -59,7 +59,7 @@ type AnimateFrom = 'bottom' | 'top' | 'left' | 'right' | 'center' | 'random';
 type MasonryProps<TItem> = {
     items: TItem[];
     getItemKey: (item: TItem) => string;
-    getItemHeight: (item: TItem) => number;
+    getItemHeight: (item: TItem, columnWidth: number) => number;
     renderItem: (item: TItem) => React.ReactNode;
     columnWidth?: number;
     gap?: number;
@@ -151,7 +151,7 @@ export function Masonry<TItem>({
     }, [width, forcedWidth]);
 
     const layout = useMemo(() => {
-        if (!measuredWidth) return { grid: [] as GridItem[], containerHeight: 0 };
+        if (!measuredWidth) return { grid: [] as GridItem[], containerHeight: 0, columnW: 0 };
         let columns = columnsByBreakpoint;
         let columnW = columnWidth ?? 0;
 
@@ -170,7 +170,7 @@ export function Masonry<TItem>({
             const id = getItemKey(child);
             const col = colHeights.indexOf(Math.min(...colHeights));
             const x = col * (columnW + gap);
-            const height = getItemHeight(child);
+            const height = getItemHeight(child, columnW);
             const y = colHeights[col];
 
             colHeights[col] += height + gap;
@@ -180,7 +180,7 @@ export function Masonry<TItem>({
 
         const containerHeight = Math.max(0, ...colHeights) - gap;
 
-        return { grid, containerHeight };
+        return { grid, containerHeight, columnW };
     }, [columnsByBreakpoint, items, measuredWidth, getItemKey, getItemHeight, columnWidth, gap]);
 
     const hasMounted = useRef(false);
@@ -259,8 +259,12 @@ export function Masonry<TItem>({
         if (!items || items.length === 0) return 0;
         const gap = 16;
 
-        return items.reduce((sum, item, idx) => sum + getItemHeight(item) + (idx > 0 ? gap : 0), 0);
-    }, [items, getItemHeight]);
+        return items.reduce(
+            (sum, item, idx) =>
+                sum + getItemHeight(item, layout.columnW || 380) + (idx > 0 ? gap : 0),
+            0,
+        );
+    }, [items, getItemHeight, layout.columnW]);
 
     return (
         <div

@@ -4,6 +4,7 @@ import { Tab, Tabs } from '@heroui/react';
 
 import { CardsList } from './cards-list';
 import { ContentTable } from './content-table';
+import { MemoriesList } from './memories-list';
 
 import { TagComponent } from '@/entities/tag';
 import { useTagsStore } from '@/entities/tag';
@@ -19,6 +20,9 @@ export const HomeContent = ({ selectedTagIds }: HomeContentProps) => {
         <Tabs aria-label="Options" className="w-full" variant="underlined">
             <Tab key="cards" title="cards">
                 <CardsList selectedTagIds={selectedTagIds} />
+            </Tab>
+            <Tab key="notes" title="notes">
+                <MemoriesList selectedTagIds={selectedTagIds} />
             </Tab>
             <Tab key="tags" title="tags">
                 <div className="flex flex-wrap justify-center gap-2">

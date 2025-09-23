@@ -27,7 +27,7 @@ export function CardsList({ selectedTagIds }: CardsListProps) {
             columnWidth={380}
             duration={0.6}
             ease="power3.out"
-            getItemHeight={() => CARD_HEIGHT_PX}
+            getItemHeight={(_, __) => CARD_HEIGHT_PX}
             getItemKey={(card) => card.id}
             hoverScale={0.98}
             items={filteredCards}
