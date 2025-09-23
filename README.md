@@ -1,4 +1,4 @@
-# Pitch
+# Mentem
 
 An AI-powered study and research app built with Next.js. Create and organize flashcards with tags, generate tag suggestions and research questions using LLMs, and review with a learning UI. The project follows the Feature-Sliced Design (FSD) architecture for scalable front-end structure.
 
@@ -27,7 +27,7 @@ An AI-powered study and research app built with Next.js. Create and organize fla
 
 ## Overview
 
-Pitch helps you research topics with AI-generated follow-up questions, turn insights into cards, manage tags, and review through a learning workflow. It uses OpenRouter-hosted models for streaming responses and a modern component stack for a smooth UX.
+Mentem helps you research topics with AI-generated follow-up questions, turn insights into cards, manage tags, and review through a learning workflow. It uses OpenRouter-hosted models for streaming responses and a modern component stack for a smooth UX.
 
 ## Key Features
 
