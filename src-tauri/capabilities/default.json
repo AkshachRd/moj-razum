@@ -6,6 +6,8 @@
     "permissions": [
         "core:default",
         { "identifier": "core:path:allow-resolve-directory" },
+        { "identifier": "dialog:default" },
+        { "identifier": "dialog:allow-open" },
         {
             "identifier": "fs:allow-write-text-file",
             "allow": [{ "path": "$APP_DATA/**" }, { "path": "$RUNTIME/**" }]
