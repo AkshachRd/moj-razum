@@ -1,10 +1,11 @@
 'use client';
 
+import type { StreamableValue } from 'ai/rsc';
+
 import { useState } from 'react';
 import { addToast } from '@heroui/react';
 import { readStreamableValue } from 'ai/rsc';
 
-import { generateQuestions } from '../lib/generate-questions';
 import { useTaskStore } from '../model/store';
 
 import { parseError } from '@/shared/ai';
@@ -47,11 +48,32 @@ export function useDeepResearch() {
         taskStore.setQuestion(question);
 
         let content = '';
-        const { output } = await generateQuestions(question, 'english', handleError);
 
-        for await (const delta of readStreamableValue(output)) {
-            content = `${content}${delta}`;
-            taskStore.updateQuestions(content);
+        try {
+            type GenerateQuestionsFn = (
+                q: string,
+                lang: string,
+                onError: (error: unknown) => void,
+            ) => Promise<{ output: unknown }>;
+
+            const mod = (await import('../lib/generate-questions').catch(
+                async () => await import('../lib/generate-questions.stub'),
+            )) as unknown as { generateQuestions: GenerateQuestionsFn };
+
+            const { output } = await mod.generateQuestions(question, 'english', handleError);
+
+            for await (const delta of readStreamableValue(
+                output as StreamableValue<string, unknown>,
+            )) {
+                content = `${content}${delta}`;
+                taskStore.updateQuestions(content);
+            }
+        } catch {
+            // Server actions not available in static export
+            taskStore.updateQuestions('Research is unavailable in this build.');
+            setStatus('');
+
+            return;
         }
     }
 

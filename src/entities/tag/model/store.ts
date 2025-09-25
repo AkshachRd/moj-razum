@@ -1,35 +1,45 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { nanoid } from 'nanoid';
 
 import { getRandomTagColor } from '../lib/getRandomTagColor';
+import { tagToMarkdown } from '../lib/serialize';
 
 import { Tag, TagColor } from './types';
+
+import { getCollectionDir, writeMarkdownFile } from '@/shared/lib/fs';
 
 export type TagsState = {
     tags: Tag[];
     addTag: (name: string, color?: TagColor) => Tag;
     removeTag: (tagId: string) => void;
     clearTags: () => void;
+    hydrate: (tags: Tag[]) => void;
 };
 
-export const useTagsStore = create<TagsState>()(
-    persist(
-        (set) => ({
-            tags: [],
-            addTag: (name, color) => {
-                const tag = { id: nanoid(), name, color: color ?? getRandomTagColor() };
+export const useTagsStore = create<TagsState>()((set) => ({
+    tags: [],
+    addTag: (name, color) => {
+        const tag = { id: nanoid(), name, color: color ?? getRandomTagColor() };
 
-                set((state) => ({ tags: [...state.tags, tag] }));
+        void (async () => {
+            try {
+                const dir = await getCollectionDir('tags');
+                const fileName = `${tag.id}.md`;
 
-                return tag;
-            },
-            removeTag: (tagId) =>
-                set((state) => ({
-                    tags: state.tags.filter((t) => t.id !== tagId),
-                })),
-            clearTags: () => set(() => ({ tags: [] })),
-        }),
-        { name: 'tags' },
-    ),
-);
+                await writeMarkdownFile(dir, fileName, tagToMarkdown(tag));
+            } catch (error) {
+                console.error('Failed to write tag file', error);
+            }
+        })();
+
+        set((state) => ({ tags: [...state.tags, tag] }));
+
+        return tag;
+    },
+    removeTag: (tagId) =>
+        set((state) => ({
+            tags: state.tags.filter((t) => t.id !== tagId),
+        })),
+    clearTags: () => set(() => ({ tags: [] })),
+    hydrate: (tags) => set(() => ({ tags })),
+}));

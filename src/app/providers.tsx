@@ -1,6 +1,9 @@
 'use client';
 
 import type { ThemeProviderProps } from 'next-themes';
+import type { Memory } from '@/entities/memory/model/types';
+import type { Card } from '@/entities/card/model/types';
+import type { Tag } from '@/entities/tag/model/types';
 
 import * as React from 'react';
 import { HeroUIProvider } from '@heroui/system';
@@ -12,6 +15,10 @@ import { nanoid } from 'nanoid';
 import { listen } from '@tauri-apps/api/event';
 
 import { useMemoriesStore } from '@/entities/memory/model/store';
+import { useCardStore } from '@/entities/card/model/store';
+import { useTagsStore } from '@/entities/tag/model/store';
+import { getCollectionDir, listFiles, readMarkdownFile } from '@/shared/lib/fs';
+import { parseMemoryMarkdown } from '@/entities/memory/lib/parse';
 
 export interface ProvidersProps {
     children: React.ReactNode;
@@ -27,8 +34,90 @@ declare module '@react-types/shared' {
 export function Providers({ children, themeProps }: ProvidersProps) {
     const router = useRouter();
     const addMemory = useMemoriesStore((s) => s.addMemory);
+    const addCard = useCardStore((s) => s.addCard);
+    const addTag = useTagsStore((s) => s.addTag);
+    // hydration hooks can be added later for parsing disk files
 
     React.useEffect(() => {
+        // On startup, hydrate/migrate
+        (async () => {
+            try {
+                const memoriesDir = await getCollectionDir('memories');
+                const cardsDir = await getCollectionDir('cards');
+                const tagsDir = await getCollectionDir('tags');
+
+                const [memFiles] = await Promise.all([
+                    listFiles(memoriesDir),
+                    listFiles(cardsDir),
+                    listFiles(tagsDir),
+                ]);
+
+                // Hydrate memories from disk
+                try {
+                    const memoryEntries = memFiles.filter((f) => f.name?.endsWith('.md'));
+
+                    for (const entry of memoryEntries) {
+                        const content = await readMarkdownFile(memoriesDir, entry.name!);
+                        const memory = parseMemoryMarkdown(content);
+
+                        if (memory) addMemory(memory);
+                    }
+                } catch {
+                    /* ignore */
+                }
+
+                // Migrate from old zustand localStorage if present (one-time)
+                if (typeof window !== 'undefined' && !localStorage.getItem('mdMigrationV1')) {
+                    try {
+                        type PersistEnvelope<S> = { state?: S } | S | null;
+                        const readPersist = <S,>(key: string): S | null => {
+                            const raw = localStorage.getItem(key);
+
+                            if (!raw) return null;
+                            try {
+                                const obj = JSON.parse(raw) as PersistEnvelope<S>;
+
+                                if (
+                                    obj &&
+                                    typeof obj === 'object' &&
+                                    obj !== null &&
+                                    'state' in obj
+                                ) {
+                                    return (obj as { state?: S }).state ?? null;
+                                }
+
+                                return obj as S;
+                            } catch {
+                                return null;
+                            }
+                        };
+
+                        const memState = readPersist<{ memories?: Memory[] }>('memories');
+                        const cardState = readPersist<{ cards?: Card[] }>('cards');
+                        const tagState = readPersist<{ tags?: Tag[] }>('tags');
+
+                        if (memState?.memories) {
+                            for (const m of memState.memories) addMemory(m);
+                        }
+
+                        if (cardState?.cards) {
+                            for (const c of cardState.cards) addCard(c);
+                        }
+
+                        if (tagState?.tags) {
+                            for (const t of tagState.tags) addTag(t.name, t.color);
+                        }
+
+                        localStorage.setItem('mdMigrationV1', 'done');
+                    } catch {
+                        /* ignore */
+                    }
+                }
+            } catch {
+                /* ignore: web dev */
+            }
+        })();
+
         let unlistenDeepLink: (() => void) | undefined;
         let unlistenSingle: (() => void) | undefined;
 
@@ -114,7 +203,7 @@ export function Providers({ children, themeProps }: ProvidersProps) {
                 /* ignore */
             }
         };
-    }, [addMemory]);
+    }, [addMemory, addCard, addTag]);
 
     return (
         <HeroUIProvider navigate={router.push}>

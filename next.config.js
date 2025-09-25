@@ -14,14 +14,7 @@ const nextConfig = {
     },
     // Configure assetPrefix or else the server won't properly resolve your assets.
     assetPrefix: isProd ? undefined : `http://${internalHost}:4250`,
-    experimental: {
-        serverActions: {
-            allowedOrigins: [
-                'localhost:4250', // localhost
-                'super-cod-4250.app.github.dev', // Codespaces
-            ],
-        },
-    },
+    experimental: {},
 };
 
 export default nextConfig;

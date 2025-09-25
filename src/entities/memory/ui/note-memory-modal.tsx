@@ -9,6 +9,7 @@ import {
     Textarea,
     Card,
     CardBody,
+    addToast,
 } from '@heroui/react';
 import { nanoid } from 'nanoid';
 import { useEffect, useMemo, useState } from 'react';
@@ -73,7 +74,7 @@ export function NoteMemoryModal({ memory }: NoteMemoryModalProps) {
         });
     };
 
-    const handleSave = (onClose: () => void) => {
+    const handleSave = async (onClose: () => void) => {
         const now = Date.now();
         const tagIds = Array.from(selectedTagIds);
 
@@ -86,6 +87,7 @@ export function NoteMemoryModal({ memory }: NoteMemoryModalProps) {
                 tagIds,
                 updatedAt: now,
             }));
+            addToast({ title: 'Note saved', color: 'success' });
         } else {
             const newMemory: NoteMemory = {
                 id: nanoid(),
@@ -99,6 +101,7 @@ export function NoteMemoryModal({ memory }: NoteMemoryModalProps) {
             };
 
             addMemory(newMemory);
+            addToast({ title: 'Note saved', color: 'success' });
         }
 
         onClose();
