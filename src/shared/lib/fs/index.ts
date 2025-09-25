@@ -1,29 +1,26 @@
 'use client';
 
-import {
-    exists,
-    mkdir,
-    readTextFile,
-    writeTextFile,
-    readDir,
-    remove,
-    BaseDirectory,
-} from '@tauri-apps/plugin-fs';
 import { join } from '@tauri-apps/api/path';
 
-async function ensureDirAppData(path: string) {
-    const present = await exists(path, { baseDir: BaseDirectory.AppData });
+import { useSettingsStore } from '@/entities/settings/model/store';
 
-    if (!present) {
-        await mkdir(path, { recursive: true, baseDir: BaseDirectory.AppData });
-    }
+type InvokeArgs = Record<string, unknown> | undefined;
+
+async function invokeCmd<T>(cmd: string, params?: InvokeArgs): Promise<T> {
+    const { invoke } = await import('@tauri-apps/api/core');
+
+    return await invoke<T>(cmd, params);
+}
+
+async function ensureDir(path: string) {
+    await invokeCmd('fs_any_mkdir', { path } as InvokeArgs);
 }
 
 export async function getDataRoot(): Promise<string> {
-    // Use AppData base directory with a relative scope path
-    const dir = 'mentem';
+    const dest = useSettingsStore.getState()?.destinationDir;
+    const dir = dest && dest.length > 0 ? dest : 'mentem';
 
-    await ensureDirAppData(dir);
+    await ensureDir(dir);
 
     return dir;
 }
@@ -32,7 +29,7 @@ export async function getCollectionDir(collection: 'memories' | 'cards' | 'tags'
     const root = await getDataRoot();
     const dir = await join(root, collection);
 
-    await ensureDirAppData(dir);
+    await ensureDir(dir);
 
     return dir;
 }
@@ -40,7 +37,10 @@ export async function getCollectionDir(collection: 'memories' | 'cards' | 'tags'
 export async function writeMarkdownFile(dir: string, fileName: string, content: string) {
     const filePath = await join(dir, fileName);
 
-    await writeTextFile(filePath, content, { baseDir: BaseDirectory.AppData });
+    await invokeCmd('fs_any_write_text_file', {
+        path: filePath,
+        contents: content,
+    } as InvokeArgs);
 
     return filePath;
 }
@@ -48,41 +48,23 @@ export async function writeMarkdownFile(dir: string, fileName: string, content: 
 export async function readMarkdownFile(dir: string, fileName: string) {
     const filePath = await join(dir, fileName);
 
-    return await readTextFile(filePath, { baseDir: BaseDirectory.AppData });
+    return await invokeCmd<string>('fs_any_read_text_file', { path: filePath } as InvokeArgs);
 }
 
 export async function listFiles(dir: string) {
-    return await readDir(dir, { baseDir: BaseDirectory.AppData });
+    const names = await invokeCmd<string[]>('fs_any_read_dir', { path: dir } as InvokeArgs);
+
+    return names.map((name) => ({ name }) as { name: string });
 }
 
 export async function deleteFile(dir: string, fileName: string) {
     const filePath = await join(dir, fileName);
 
-    await remove(filePath, { baseDir: BaseDirectory.AppData });
+    await invokeCmd('fs_any_remove', { path: filePath } as InvokeArgs);
 }
 
 export async function fileExists(dir: string, fileName: string) {
     const filePath = await join(dir, fileName);
 
-    return await exists(filePath, { baseDir: BaseDirectory.AppData });
-}
-
-async function findProjectRoot(): Promise<string | null> {
-    // Ascend up to 8 levels from the runtime working directory to find a package.json
-    let current = '.';
-
-    for (let i = 0; i < 8; i++) {
-        try {
-            const candidatePkg = await join(current, 'package.json');
-
-            if (await exists(candidatePkg)) {
-                return current;
-            }
-        } catch {
-            /* ignore */
-        }
-        current = await join(current, '..');
-    }
-
-    return null;
+    return await invokeCmd<boolean>('fs_any_exists', { path: filePath } as InvokeArgs);
 }

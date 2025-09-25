@@ -1,4 +1,44 @@
 use tauri::{Emitter, Manager};
+use std::fs;
+
+#[tauri::command]
+fn fs_any_write_text_file(path: String, contents: String) -> Result<(), String> {
+  fs::create_dir_all(std::path::Path::new(&path).parent().ok_or("bad path")?)
+    .map_err(|e| e.to_string())?;
+  fs::write(path, contents).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn fs_any_read_text_file(path: String) -> Result<String, String> {
+  fs::read_to_string(path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn fs_any_mkdir(path: String) -> Result<(), String> {
+  fs::create_dir_all(path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn fs_any_remove(path: String) -> Result<(), String> {
+  let p = std::path::Path::new(&path);
+  if p.is_dir() { fs::remove_dir_all(p).map_err(|e| e.to_string()) } else { fs::remove_file(p).map_err(|e| e.to_string()) }
+}
+
+#[tauri::command]
+fn fs_any_exists(path: String) -> Result<bool, String> {
+  Ok(std::path::Path::new(&path).exists())
+}
+
+#[tauri::command]
+fn fs_any_read_dir(path: String) -> Result<Vec<String>, String> {
+  let mut names = Vec::new();
+  for entry in fs::read_dir(path).map_err(|e| e.to_string())? {
+    let entry = entry.map_err(|e| e.to_string())?;
+    if let Some(name) = entry.file_name().to_str() { names.push(name.to_string()); }
+  }
+  Ok(names)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -25,8 +65,15 @@ pub fn run() {
       }
     }))
     .plugin(tauri_plugin_deep_link::init())
-    .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
+    .invoke_handler(tauri::generate_handler![
+      fs_any_write_text_file,
+      fs_any_read_text_file,
+      fs_any_mkdir,
+      fs_any_remove,
+      fs_any_exists,
+      fs_any_read_dir
+    ])
     .setup(|app| {
       #[cfg(desktop)]
       {
